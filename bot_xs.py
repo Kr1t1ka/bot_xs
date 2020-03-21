@@ -1,4 +1,4 @@
-from vk_api.longpoll import VkLongPoll, VkEventType
+﻿from vk_api.longpoll import VkLongPoll, VkEventType
 import vk_api
 import data
 import random
@@ -7,7 +7,7 @@ from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 
 
 
-token = "9b0d14d517db405de5c53463e1f0f782b59cc170cc8df6f0857ad0b5bb37f3bd40e64d98882f82fbf908a"
+token = "e2edf221438fb1642ddfe5b8358559010e9c9be696c132946b9dd99a2df5a08de1c5c50d0234d63c37ffe"
 
 vk_session = vk_api.VkApi(token=token)
 
