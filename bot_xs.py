@@ -1,5 +1,4 @@
-﻿
-from vk_api.longpoll import VkLongPoll, VkEventType
+﻿from vk_api.longpoll import VkLongPoll, VkEventType
 import vk_api
 import random
 from datetime import datetime
@@ -36,8 +35,6 @@ def execute_read_query(connection, query):
     try:
         cursor.execute(query)
         result = cursor.fetchall()
-        result = result[0]
-        result = result[0]
         return result
     except Error as e:
         print(f"Произошла ошибка '{e}'")
@@ -46,7 +43,35 @@ def execute_read_query(connection, query):
 connection = create_connection("test1.sqlite")  # подключение к бд, или ее создание
 
 # Подключение к боту
-select_token = "SELECT token FROM token WHERE id = '1'"  # Выберает токен по уникальному id
+select_token = "SELECT group_token FROM token WHERE id = '1'"  # Выберает токен по уникальному id
+select_victorina = "SELECT * FROM victorina"
+
+# Выгрузка данных из бд для викторины
+victorina_mass = execute_read_query(connection,
+                                    select_victorina)  # Массив содержащий в себе вопросы и ответы для викторины
+
+victorina_indicator = {}  # Словарь с данными о том на каком вопросе пользователь
+dictionary_res = {}
+
+
+# Функция записывающая пользователя в словарь
+def vic_indicator(user_id):
+    victorina_indicator[user_id] = 0
+    dictionary_res[user_id] = 0
+    text_question = victorina_mass[0][1]
+    send_message(vk_session, 'user_id', event.user_id,
+                 message=text_question,
+                 keyboard=keyboard)
+
+# Функция блокирует выход из викторины и отбрасывает все неподходяшие сообшения при прохождении викторины
+def vic_test(user_id):
+    try:
+        print("Пользователь " + fullname + " проходит викторину, сейчас на вопросе номер: " + str(victorina_indicator[user_id]))
+        return 1
+    except:
+        print("Пользователь " + fullname + " не проходит викторину")
+        return 0
+
 
 token = execute_read_query(connection, select_token)
 vk_session = vk_api.VkApi(token=token)
@@ -71,21 +96,20 @@ def create_keyboard(response):
         keyboard.add_button('Розыгрыш', color=VkKeyboardColor.NEGATIVE)
         keyboard.add_button('Викторина', color=VkKeyboardColor.POSITIVE)
     elif response == 'викторина':
-        select_users = "SELECT res FROM Qiuz WHERE id = '" + str(fullname) + " " + str(
+        select_users = "SELECT res FROM Qiuz WHERE id = '" + str(
             event.user_id) + "'"  # Выберает номер пользователя по уникальному id
         test_res = execute_read_query(connection, select_users)
-        test_res = str(test_res)
-        if test_res == "-1":
-            keyboard = VkKeyboard(one_time=True)
-            keyboard.add_button('Да', color=VkKeyboardColor.POSITIVE)
+        test_res = test_res[0]
+        test_res = test_res[0]
+        if test_res == -1:
+            keyboard = VkKeyboard(one_time=False)
+            keyboard.add_button('1', color=VkKeyboardColor.POSITIVE)
+            keyboard.add_button('2', color=VkKeyboardColor.POSITIVE)
+            keyboard.add_button('3', color=VkKeyboardColor.POSITIVE)
+            keyboard.add_button('4', color=VkKeyboardColor.POSITIVE)
         else:
             keyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
-    elif response == "да":
-        keyboard = VkKeyboard(one_time=False)
-        keyboard.add_button('1', color=VkKeyboardColor.POSITIVE)
-        keyboard.add_button('2', color=VkKeyboardColor.POSITIVE)
-        keyboard.add_button('3', color=VkKeyboardColor.POSITIVE)
-        keyboard.add_button('4', color=VkKeyboardColor.POSITIVE)
+
     keyboard = keyboard.get_keyboard()
     return keyboard
 
@@ -98,58 +122,27 @@ def send_message(vk_session, id_type, id, message=None, attachment=None, keyboar
 
 
 # Функция викторины
-def victorina():
+def victorina(check_dict, response):
     res = 0
-    tmp = 0
-    for event in longpoll.listen():
-        if event.type == VkEventType.MESSAGE_NEW:
-            try:
-                response = event.text.lower()
-                keyboard = create_keyboard(response)
-                if response == "да":
-                    for id in range(1, 11):
-                        select_question = "SELECT question FROM victorina WHERE id = '" + str(
-                            id) + "'"  # Выберает вопрос по уникальному id
-                        select_answer = "SELECT answer FROM victorina WHERE id = '" + str(
-                            id) + "'"  # Выберает ответ по уникальному id
-                        question = execute_read_query(connection, select_question)
-                        answer = execute_read_query(connection, select_answer)
-                        send_message(vk_session, 'user_id', event.user_id, message=str(question), keyboard=keyboard)
-                        res += anser(answer)
-                    return res
-            except:
-                vk_session.method('messages.send',
-                                  {'user_id': event.user_id, 'message': f"Произошла ошибка в викторине",
-                                   'random_id': 0})
+    try:
+        num_question = victorina_indicator[check_dict]
 
+        if response == str(victorina_mass[num_question][2]):
+            print("верно")
+            dictionary_res[check_dict] += 1
 
-# Функция получает правельный ответ, и проверяет ответы введеные пользователем
-def anser(answer):
-    res = 0
-    for event in longpoll.listen():
-        if event.type == VkEventType.MESSAGE_NEW:
-            try:
-                user = vk_session.method("users.get", {"user_ids": event.user_id})
-                fullname = user[0]['first_name'] + ' ' + user[0]['last_name']
-                print(str(fullname) + " " + str(event.user_id))
-                print('Сообщение пришло в: ' + str(datetime.strftime(datetime.now(), "%H:%M:%S")))
-                print('Текст сообщения: ' + str(event.text))
-                print('-' * 60)
-                response = event.text.lower()
-                keyboard = create_keyboard(response)
+        if num_question == 9:
+            return dictionary_res[check_dict]
 
-                if event.from_user and not (event.from_me):
-                    keyboard = create_keyboard(response)
-                    if (response == "1") or (response == "2") or (response == "3") or (response == "4"):
-                        if int(response) == answer:
-                            res = 1
-                            return res
-                        else:
-                            return res
-            except:
-                vk_session.method('messages.send',
-                                  {'user_id': event.user_id, 'message': f"Произошла ошибка в генерации вопроса",
-                                   'random_id': 0})
+        if num_question < 10:
+            victorina_indicator[check_dict] += 1
+        num_question = victorina_indicator[check_dict]
+        text_question = str(victorina_mass[num_question][1])
+        send_message(vk_session, 'user_id', event.user_id, message=text_question)
+        print(num_question)
+    except:
+        print("ошибка")
+        return res
 
 
 # Создание таблицы в бд
@@ -172,10 +165,6 @@ while True:
     tmp += 1
 '''
 
-# Оповещение о запуске бота
-send_message(vk_session, 'user_id', 223829105, message='Бот запущен. И еще он готов, затести его.')
-send_message(vk_session, 'user_id', 83886028, message='БОТ УДАЧНО ЗАПУЩЕН')
-
 # execute_query(connection, create_users_table)
 # execute_query(connection, create_users)
 
@@ -183,79 +172,85 @@ send_message(vk_session, 'user_id', 83886028, message='БОТ УДАЧНО ЗА�
 while True:
     for event in longpoll.listen():
         if event.type == VkEventType.MESSAGE_NEW:
-            # try:
-            user = vk_session.method("users.get",
-                                     {"user_ids": event.user_id})  # вместо 1 подставляете айди нужного юзера
-            fullname = user[0]['first_name'] + ' ' + user[0]['last_name']
-            print(str(fullname) + " " + str(event.user_id))
-            print('Сообщение пришло в: ' + str(datetime.strftime(datetime.now(), "%H:%M:%S")))
-            print('Текст сообщения: ' + str(event.text))
-            print('-' * 60)
+            try:
+                user = vk_session.method("users.get",
+                                         {"user_ids": event.user_id})  # вместо 1 подставляете айди нужного юзера
+                fullname = user[0]['first_name'] + ' ' + user[0]['last_name']
+                print(str(fullname) + " " + str(event.user_id))
+                print('Сообщение пришло в: ' + str(datetime.strftime(datetime.now(), "%H:%M:%S")))
+                print('Текст сообщения: ' + str(event.text))
+                print('-' * 60)
 
-            select_users = "SELECT num FROM Qiuz WHERE id = '" + str(fullname) + " " + str(
-                event.user_id) + "'"  # Выберает номер пользователя по уникальному id
+                select_users = "SELECT num FROM Qiuz WHERE id = '" + str(event.user_id) + "'"
 
-            response = event.text.lower()
-            keyboard = create_keyboard(response)
+                response = event.text.lower()
+                keyboard = create_keyboard(response)
 
-            if event.from_user and not (event.from_me):
-                if response == "начать":
-                    create_acc = "INSERT INTO Qiuz (id) VALUES ('" + str(fullname) + " " + str(event.user_id) + "');"
-                    execute_query(connection, create_acc)
-                    send_message(vk_session, 'user_id', event.user_id,
-                                 message='Привет. \nЖелаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?',
-                                 keyboard=keyboard)
-
-                elif response == "расписание":
-                    send_message(vk_session, 'user_id', event.user_id, message='Расписание Лекций или Ивентов?',
-                                 keyboard=keyboard)
-
-                elif response == "розыгрыш":
-                    users = execute_read_query(connection, select_users)
-                    message_start = "Все подкручено ты ничего не выиграешь. \n\nВаш номер в системе бота, по нему будет осуществлятся розыгрыш: " + str(
-                        users)
-                    send_message(vk_session, 'user_id', event.user_id, message=message_start)
-
-                elif response == "лекций":
-                    send_message(vk_session, 'user_id', event.user_id, message='(расписание лекций)')
-
-                elif response == "ивентов":
-                    send_message(vk_session, 'user_id', event.user_id, message='(расписание ивентов)')
-
-                elif response == "назад":
-                    send_message(vk_session, 'user_id', event.user_id,
-                                 message='Желаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?',
-                                 keyboard=keyboard)
-
-                elif response == "викторина":
-                    select_users = "SELECT res FROM Qiuz WHERE id = '" + str(fullname) + " " + str(
-                        event.user_id) + "'"  # Выберает номер пользователя по уникальному id
-                    test_res = execute_read_query(connection, select_users)
-                    test_res = str(test_res)
-                    if test_res == "-1":
-                        send_message(vk_session, 'user_id', event.user_id, message='Начнем?', keyboard=keyboard)
-                        result = victorina()
-                        result = str(result)
-                        create_acc = "UPDATE Qiuz SET res=('" + result + "') WHERE id = ('" + str(fullname) + " " + str(
-                            event.user_id) + "');"
-                        execute_query(connection, create_acc)
-                        keyboard = create_keyboard(response)
-                        send_message(vk_session, 'user_id', event.user_id,
-                                     message='Тест заверщен. \n\nКонечно можно было бы и лучше, но вы равно молодец. \n\nВаш результат: ' + result,
-                                     keyboard=keyboard)
-
-                    else:
-                        if test_res == "10":
-                            test_res = test_res
-                            create_keyboard('назад')
+                if event.from_user and not (event.from_me):
+                    if ((response == "1") or (response == "2") or (response == "3") or (response == "4")) and (vic_test(event.user_id) == 1):
+                        result = victorina(event.user_id, response)
+                        print(result)
+                        if result != None:
+                            keyboard = create_keyboard("назад")
                             send_message(vk_session, 'user_id', event.user_id,
-                                         message='Молодец! Вы знаете про факультет ИКСС все! \n\nВаш результат: ' + test_res)
-
-                        else:
-                            test_res = test_res
-                            keyboard = create_keyboard(response)
+                                            message='Тест заверщен. \n\nКонечно можно было бы и лучше, но вы равно умнее половины ртсников. '
+                                                    '\n\nВаш результат: ' + str(result),
+                                            keyboard=keyboard)
+                            victorina_indicator.pop(event.user_id)
+                            update_res = "UPDATE Qiuz SET res=('" + str(result) + "') WHERE id = ('" + str(event.user_id) + "');"
+                            execute_query(connection, update_res)
+                    elif vic_test(event.user_id) == 0:
+                        if response == "начать":
+                            create_acc = "INSERT INTO Qiuz (name, id) VALUES ('" + str(fullname) + "', '" + str(
+                                event.user_id) + "');"
+                            execute_query(connection, create_acc)
                             send_message(vk_session, 'user_id', event.user_id,
-                                         message='Ваш результат: ' + test_res + ' \n\n\nВпечатляющий результат, но он не идеальный',
+                                         message='Привет ' + user[0][
+                                             'first_name'] + '!\nЖелаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?',
                                          keyboard=keyboard)
-                            # except:
-            # vk_session.method('messages.send', {'user_id': event.user_id, 'message': "Произошла ошибка в основном коде", 'random_id': 0})
+
+                        elif response == "расписание":
+                            send_message(vk_session, 'user_id', event.user_id, message='Расписание Лекций или Ивентов?',
+                                         keyboard=keyboard)
+
+                        elif response == "розыгрыш":
+                            users = execute_read_query(connection, select_users)
+                            users = users[0]
+                            users = users[0]
+                            message_start = "Все подкручено ты ничего не выиграешь. " \
+                                            "\n\nВаш номер в системе бота: " + str(
+                                users) + "\n\nПо нему будет осуществлятся розыгрыш."
+                            send_message(vk_session, 'user_id', event.user_id, message=message_start)
+
+                        elif response == "лекций":
+                            send_message(vk_session, 'user_id', event.user_id, message='(расписание лекций)')
+
+                        elif response == "ивентов":
+                            send_message(vk_session, 'user_id', event.user_id, message='(расписание ивентов)')
+
+                        elif response == "назад":
+                            send_message(vk_session, 'user_id', event.user_id,
+                                         message='Желаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?',
+                                         keyboard=keyboard)
+
+                        elif response == "викторина":
+                            select_users = "SELECT res FROM Qiuz WHERE id = '" + str(
+                                event.user_id) + "'"  # Выберает номер пользователя по уникальному id
+                            test_res = execute_read_query(connection, select_users)
+                            test_res = test_res[0]
+                            test_res = test_res[0]
+                            if test_res == -1:
+                                vic_indicator(event.user_id)
+                            else:
+                                if test_res == 10:
+                                    test_res = test_res
+                                    create_keyboard('назад')
+                                    send_message(vk_session, 'user_id', event.user_id,
+                                                 message='Молодец! Вы знаете про факультет ИКСС все! \n\nВаш результат: ' + str(test_res))
+                                else:
+                                    test_res = test_res
+                                    keyboard = create_keyboard(response)
+                                    send_message(vk_session, 'user_id', event.user_id,
+                                                 message='Ваш результат: ' + str(test_res) + ' \n\n\nВпечатляющий результат, но он не идеальный')
+            except:
+                print("Произошла ошибка в основном коде")
