@@ -84,8 +84,10 @@ def create_keyboard(response):
     keyboard = VkKeyboard(one_time=False)
     if response == "начать":
         keyboard.add_button('Расписание', color=VkKeyboardColor.POSITIVE)
-        keyboard.add_button('Розыгрыш', color=VkKeyboardColor.NEGATIVE)
+        keyboard.add_button('Розыгрыш', color=VkKeyboardColor.POSITIVE)
+        keyboard.add_line()
         keyboard.add_button('Викторина', color=VkKeyboardColor.POSITIVE)
+        keyboard.add_button('Конкурс', color=VkKeyboardColor.POSITIVE)
     elif response == 'расписание':
         keyboard.add_button('Лекций', color=VkKeyboardColor.POSITIVE)
         keyboard.add_button('Ивентов', color=VkKeyboardColor.POSITIVE)
@@ -93,8 +95,10 @@ def create_keyboard(response):
         keyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
     elif response == 'назад':
         keyboard.add_button('Расписание', color=VkKeyboardColor.POSITIVE)
-        keyboard.add_button('Розыгрыш', color=VkKeyboardColor.NEGATIVE)
+        keyboard.add_button('Розыгрыш', color=VkKeyboardColor.POSITIVE)
+        keyboard.add_line()
         keyboard.add_button('Викторина', color=VkKeyboardColor.POSITIVE)
+        keyboard.add_button('Конкурс', color=VkKeyboardColor.POSITIVE)
     elif response == 'викторина':
         select_users = "SELECT res FROM Qiuz WHERE id = '" + str(
             event.user_id) + "'"  # Выберает номер пользователя по уникальному id
@@ -128,7 +132,6 @@ def victorina(check_dict, response):
         num_question = victorina_indicator[check_dict]
 
         if response == str(victorina_mass[num_question][2]):
-            print("верно")
             dictionary_res[check_dict] += 1
 
         if num_question == 9:
@@ -139,9 +142,8 @@ def victorina(check_dict, response):
         num_question = victorina_indicator[check_dict]
         text_question = str(victorina_mass[num_question][1])
         send_message(vk_session, 'user_id', event.user_id, message=text_question)
-        print(num_question)
     except:
-        print("ошибка")
+        print("ошибка в викторине")
         return res
 
 
@@ -189,7 +191,7 @@ while True:
                 if event.from_user and not (event.from_me):
                     if ((response == "1") or (response == "2") or (response == "3") or (response == "4")) and (vic_test(event.user_id) == 1):
                         result = victorina(event.user_id, response)
-                        print(result)
+
                         if result != None:
                             keyboard = create_keyboard("назад")
                             send_message(vk_session, 'user_id', event.user_id,
@@ -205,8 +207,9 @@ while True:
                                 event.user_id) + "');"
                             execute_query(connection, create_acc)
                             send_message(vk_session, 'user_id', event.user_id,
-                                         message='Привет ' + user[0][
-                                             'first_name'] + '!\nЖелаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?',
+                                         message='Привет ' + user[0]['first_name'] +
+                                                 '!\nЖелаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?'
+                                                 ' \n\nИли хотите сдать работу на конкурс',
                                          keyboard=keyboard)
 
                         elif response == "расписание":
@@ -230,7 +233,8 @@ while True:
 
                         elif response == "назад":
                             send_message(vk_session, 'user_id', event.user_id,
-                                         message='Желаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?',
+                                         message='Желаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?'
+                                                 ' \n\nИли хотите сдать работу на конкурс',
                                          keyboard=keyboard)
 
                         elif response == "викторина":
