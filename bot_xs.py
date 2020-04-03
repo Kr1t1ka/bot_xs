@@ -9,14 +9,24 @@ connection = dbWork.create_connection("test1.sqlite")  # подключение 
 
 # Подключение к боту
 select_token = "SELECT group_token FROM token WHERE id = '1'"  # Выберает токен по уникальному id
-select_victorina = "SELECT * FROM victorina"
 token = dbWork.execute_read_query(connection, select_token)
 vk_session = vk_api.VkApi(token=token)
 session_api = vk_session.get_api()
 longpoll = VkLongPoll(vk_session)
 
 # Выгрузка данных из бд для викторины
+select_victorina = "SELECT * FROM victorina"
 victorina_mass = dbWork.execute_read_query(connection,select_victorina)  # Массив содержащий в себе вопросы и ответы для викторины
+
+#TODO: удалить следующие строки
+'''select_test = "SELECT name FROM test WHERE id = '4'"
+test_mass = dbWork.execute_read_query(connection,select_test)
+
+if test_mass:
+    print(test_mass[0][0])
+else:
+    print("Error")'''
+
 
 victorina_indicator = {}  # Словарь с данными о том на каком вопросе пользователь
 dictionary_res = {} # Словарь содержет в себе результаты ответов
@@ -29,6 +39,7 @@ def vic_indicator(user_id):
     send_message(vk_session, 'user_id', event.user_id,
                  message=text_question,
                  keyboard=keyboard)
+
 
 # Функция блокирует выход из викторины и отбрасывает все неподходяшие сообшения при прохождении викторины
 def vic_test(user_id):
@@ -147,7 +158,8 @@ while True:
                         if result != None: # Выполняется если польщователь прошел викторину
                             keyboard = create_keyboard("назад")
                             send_message(vk_session, 'user_id', event.user_id,
-                                            message='Тест заверщен. \n\nКонечно можно было бы и лучше, но вы равно умнее половины ртсников. '
+                                            message='Тест заверщен. '
+                                                    '\n\nКонечно можно было бы и лучше, но вы равно умнее половины ртсников. '
                                                     '\n\nВаш результат: ' + str(result),
                                             keyboard=keyboard)
                             victorina_indicator.pop(event.user_id)
@@ -169,22 +181,34 @@ while True:
 
                         elif response == "розыгрыш":
 
-                            users = dbWork.execute_read_query(connection, select_users)[0][0] # получаем номер пользователя в бд
+                            if dbWork.execute_read_query(connection, select_users)[0][0]:
+                                users = dbWork.execute_read_query(connection, select_users)[0][0] # получаем номер пользователя в бд
+                            else:
+                                send_message(vk_session, 'user_id', event.user_id,
+                                             message="Произошла ошибка, напишите 'Начать'")
 
                             message_start = "Пусть удача прибудет с тобой, и ты выиграешь " \
                                             "\n\nВаш номер в системе бота: " + str(users) + \
                                             "\n\nПо нему будет осуществлятся розыгрыш."
 
-                            send_message(vk_session, 'user_id', event.user_id, message=message_start)
+                            send_message(vk_session, 'user_id', event.user_id,
+                                         message=message_start)
 
                         elif response == "расписание":
-                            send_message(vk_session, 'user_id', event.user_id, message='Расписание Лекций или Ивентов?',keyboard=keyboard)
+                            send_message(vk_session, 'user_id', event.user_id,
+                                         message='Расписание Лекций или Ивентов?',keyboard=keyboard)
 
                         elif response == "лекций":
-                            send_message(vk_session, 'user_id', event.user_id, message='(расписание лекций)')
+                            send_message(vk_session, 'user_id', event.user_id,
+                                         message='(расписание лекций)')
 
                         elif response == "ивентов":
-                            send_message(vk_session, 'user_id', event.user_id, message='(расписание ивентов)')
+                            send_message(vk_session, 'user_id', event.user_id,
+                                         message='(расписание ивентов)')
+
+                        elif response == "конкурс":
+                            send_message(vk_session, 'user_id', event.user_id,
+                                         message='скоро будет')
 
                         elif response == "назад":
                             send_message(vk_session, 'user_id', event.user_id,
@@ -194,7 +218,12 @@ while True:
 
                         elif response == "викторина":
                             select_users = "SELECT res FROM Qiuz WHERE id = '" + str(event.user_id) + "'"
-                            test_res = dbWork.execute_read_query(connection, select_users)[0][0] # получаем результат викторины
+
+                            if dbWork.execute_read_query(connection, select_users):
+                                test_res = dbWork.execute_read_query(connection, select_users)[0][0] # получаем результат викторины
+                            else:
+                                send_message(vk_session, 'user_id', event.user_id,
+                                             message="Произошла ошибка, Напишите 'Начать'")
 
                             if test_res == -1:          # пользователь записывается в словарь, для прохождения викторины
                                 vic_indicator(event.user_id)
