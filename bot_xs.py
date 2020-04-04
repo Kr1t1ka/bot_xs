@@ -158,8 +158,8 @@ while True:
                     test1 = test[len(test)-1]['url']
 
                 if event.attachments['attach1_type']=='photo' and event.from_user and not event.from_me:
-                    send_message(vk_session, event.user_id,
-                                 message="penis",
+                    send_message(vk_session, 83886028,
+                                 message="Фото прислал " + str(fullname) + str(event.user_id),
                                  attachment=test1)
                 #TODO: вот до сюда. Этот код надо интегрировать в раздел "Сдать работу", так что бы эта ссылка на работу сохранялась в
                 # бд вместе с id пользователя именем и фамилией
