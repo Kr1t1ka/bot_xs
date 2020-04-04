@@ -1,4 +1,6 @@
-﻿from vk_api.longpoll import VkLongPoll, VkEventType
+﻿import sys
+
+from vk_api.longpoll import VkLongPoll, VkEventType
 import vk_api
 from datetime import datetime
 import dbWork
@@ -26,7 +28,6 @@ dictionary_contest = {}  # Словарь для конкурса
 
 
 def create_keyboard(UserResponse):
-
     UserKeyboard = VkKeyboard(one_time=False)
 
     if UserResponse == "начать":
@@ -79,22 +80,23 @@ def create_keyboard(UserResponse):
 
 
 # Генерирует сообщения
-def send_message(VkSession, id_type, VkUserId, message=None, attachment=None, UserKeyBoard=None):
+def send_message(VkSession, VkUserId, message=None, attachment=None, UserKeyBoard=None, payload=None):
     """
-
+    :type payload: пока хз, потом напишу
     :type VkSession: сессия вк устававлимая через токен
-    :type id_type: тип сообщения которое нало отправить (беседа или лс)
     :type VkUserId: id пользователя
     :type message: сообщение для пользователя
     :type attachment: вложения для пользователя
     :type UserKeyBoard: клавиатура для поьлзователя
     """
     VkSession.method('messages.send', {
-        id_type: VkUserId,
+        'peer_id': VkUserId,
         'message': message,
         'random_id': random.randint(-2147483648, +2147483648),
         "attachment": attachment,
-        'keyboard': UserKeyBoard})
+        'keyboard': UserKeyBoard,
+        'payload': payload
+    })
 
 
 # Функция записывающая пользователя в словарь
@@ -102,7 +104,7 @@ def vic_indicator(user_id):
     victorina_indicator[user_id] = 0
     dictionary_res[user_id] = 0
     text_question = victorina_mass[0][1]
-    send_message(vk_session, 'user_id', event.user_id,
+    send_message(vk_session, event.user_id,
                  message=text_question,
                  UserKeyBoard=keyboard)
 
@@ -118,15 +120,15 @@ def victorina(check_dict, ResponseUser):
 
         if num_question == 9:
             return dictionary_res[check_dict]
-        
+
         if num_question < 10:
             victorina_indicator[check_dict] += 1
         num_question = victorina_indicator[check_dict]
         text_question = str(victorina_mass[num_question][1])
-        send_message(vk_session, 'user_id', event.user_id, message=text_question)
+        send_message(vk_session, event.user_id, message=text_question)
     except Exception:
         E_message_vic = "Ошибка:\n," + str(traceback.format_exc())
-        send_message(vk_session, 'user_id', 83886028, message=E_message_vic)
+        send_message(vk_session, 83886028, message=E_message_vic)
         return res
 
 
@@ -138,6 +140,7 @@ while True:
             # noinspection PyBroadException
             try:
                 user = vk_session.method("users.get", {"user_ids": event.user_id})
+                InformationMessage = vk_session.method("messages.getById", {"message_ids": event.message_id})
                 fullname = user[0]['first_name'] + ' ' + user[0]['last_name']
 
                 # вывод данных в консоль, для мониторнка работы бота
@@ -145,13 +148,29 @@ while True:
                 print('Сообщение пришло в: ' + str(datetime.strftime(datetime.now(), "%H:%M:%S")))
                 print('Текст сообщения: ' + str(event.text))
                 print('-' * 60)
+                print(event.attachments)
+                print('-' * 60)
+
+
+                #TODO: крч, тут до некст отметки код, который принимает вложение фотку вытягивает url и отправляет обратно url ссылку
+                if event.attachments['attach1_type']=='photo':
+                    test = InformationMessage['items'][0]['attachments'][0]['photo']['sizes']
+                    test1 = test[len(test)-1]['url']
+
+                if event.attachments['attach1_type']=='photo' and event.from_user and not event.from_me:
+                    send_message(vk_session, event.user_id,
+                                 message="penis",
+                                 attachment=test1)
+                #TODO: вот до сюда. Этот код надо интегрировать в раздел "Сдать работу", так что бы эта ссылка на работу сохранялась в
+                # бд вместе с id пользователя именем и фамилией
+                # и по специальному запросу от админов высылала все url ссылки с именами и фамилиями людей
+
+
 
                 select_users = "SELECT num FROM Qiuz WHERE id = '" + str(event.user_id) + "'"
-
                 response = event.text.lower()
                 keyboard = create_keyboard(response)
-                # attachment = event.peer_id()
-                # print(attachment)
+                photo = event.attachments
 
                 if event.from_user and not event.from_me:
                     if ((response == "1") or (response == "2") or (response == "3") or (response == "4")) and \
@@ -163,7 +182,7 @@ while True:
 
                         if result is not None:  # Выполняется если польщователь прошел викторину
                             keyboard = create_keyboard("назад")
-                            send_message(vk_session, 'user_id', event.user_id,
+                            send_message(vk_session, event.user_id,
                                          message='Тест заверщен. '
                                                  '\n\nКонечно можно было бы и лучше, но ты все равно молодец. '
                                                  '\n\nВаш результат: ' + str(result),
@@ -182,7 +201,7 @@ while True:
                                 event.user_id) + "');"
                             dbWork.execute_query(connection, create_acc)  # Создание записи о пользователе в бд
 
-                            send_message(vk_session, 'user_id', event.user_id,
+                            send_message(vk_session, event.user_id,
                                          message='Доброго времени суток ' + user[0]['first_name'] +
                                                  '!\nЖелаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?'
                                                  ' \n\nИли хотите сдать работу на конкурс',
@@ -198,37 +217,41 @@ while True:
                                                 "\n\nВаш номер в системе бота: " + str(users) + \
                                                 "\n\nПо нему будет осуществлятся розыгрыш."
 
-                                send_message(vk_session, 'user_id', event.user_id,
+                                send_message(vk_session, event.user_id,
                                              message=message_start)
 
                             else:
-                                send_message(vk_session, 'user_id', event.user_id,
+                                send_message(vk_session, event.user_id,
                                              message="Произошла ошибка, напишите 'Начать'")
 
                         elif response == "расписание":
-                            send_message(vk_session, 'user_id', event.user_id,
-                                         message='Расписание Лекций или Ивентов?', UserKeyBoard=keyboard)
+                            send_message(vk_session, event.user_id,
+                                         message='Расписание Лекций или Ивентов?',
+                                         UserKeyBoard=keyboard)
 
                         elif response == "лекций":
-                            send_message(vk_session, 'user_id', event.user_id,
+                            send_message(vk_session, event.user_id,
                                          message='(расписание лекций)')
 
                         elif response == "ивентов":
-                            send_message(vk_session, 'user_id', event.user_id,
+                            send_message(vk_session, event.user_id,
                                          message='(расписание ивентов)')
 
                         elif response == "конкурс":
-                            send_message(vk_session, 'user_id', event.user_id,
+                            send_message(vk_session, event.user_id,
                                          message='Конкурс дизайна \n'
-                                                 '(описание и условия конкурса)', UserKeyBoard=keyboard)
+                                                 '(описание и условия конкурса)',
+                                         attachment="photo427981641_457250888",
+                                         UserKeyBoard=keyboard)
 
                         elif response == "сдать работу":
-                            send_message(vk_session, 'user_id', event.user_id,
-                                         message='Отправьте мне работу', UserKeyBoard=keyboard)
+                            send_message(vk_session, event.user_id,
+                                         message='Отправьте мне работу',
+                                         UserKeyBoard=keyboard)
                             dictionary_contest[event.user_id] = 0
 
                         elif response == "назад":
-                            send_message(vk_session, 'user_id', event.user_id,
+                            send_message(vk_session, event.user_id,
                                          message='Желаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?\n\n'
                                                  'Или хотите сдать работу на конкурс',
                                          UserKeyBoard=keyboard)
@@ -240,7 +263,7 @@ while True:
                                 res_victorina: int = dbWork.execute_read_query(connection, select_users)[0][
                                     0]  # получаем результат викторины
                             else:
-                                send_message(vk_session, 'user_id', event.user_id,
+                                send_message(vk_session, event.user_id,
                                              message="Произошла ошибка, Напишите 'Начать'")
 
                             # noinspection PyUnboundLocalVariable
@@ -249,14 +272,15 @@ while True:
 
                             else:  # вывод результата прохождения викторины
                                 if res_victorina > 10:
-                                    send_message(vk_session, 'user_id', event.user_id,
+                                    send_message(vk_session, event.user_id,
                                                  message='Молодец! Вы знаете про факультет ИКСС все!\n\n'
                                                          'Ваш результат: ' + str(res_victorina))
                                 else:
-                                    send_message(vk_session, 'user_id', event.user_id,
+                                    send_message(vk_session, event.user_id,
                                                  message='Ваш результат: ' + str(res_victorina) + '\n\n'
-                                                         'Впечатляющий результат, но он не идеальный')
+                                                                                                  'Впечатляющий результат, но он не идеальный')
             except Exception as e:
                 E_message = "Ошибка:\n," + str(traceback.format_exc())
-                send_message(vk_session, 'user_id', 83886028,
+                send_message(vk_session, 83886028,
                              message=E_message)
+                sys.exit()
