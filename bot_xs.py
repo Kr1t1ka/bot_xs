@@ -44,6 +44,9 @@ def create_keyboard(UserResponse):
         UserKeyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
 
     elif UserResponse == 'конкурс':
+        if (event.user_id == 83886028) or (event.user_id == 173079751) or (event.user_id == 88333266):
+            UserKeyboard.add_button('Просмотр работ', color=VkKeyboardColor.POSITIVE)
+            UserKeyboard.add_line()
         UserKeyboard.add_button('Сдать работу', color=VkKeyboardColor.POSITIVE)
         UserKeyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
 
@@ -53,7 +56,6 @@ def create_keyboard(UserResponse):
     elif UserResponse == 'назад':
 
         dictionary_contest.pop(event.user_id, None)
-        print(dictionary_contest)
         UserKeyboard.add_button('Расписание', color=VkKeyboardColor.POSITIVE)
         UserKeyboard.add_button('Розыгрыш', color=VkKeyboardColor.POSITIVE)
         UserKeyboard.add_line()
@@ -80,9 +82,8 @@ def create_keyboard(UserResponse):
 
 
 # Генерирует сообщения
-def send_message(VkSession, VkUserId, message=None, attachment=None, UserKeyBoard=None, payload=None):
+def send_message(VkSession, VkUserId, message=None, attachment=None, UserKeyBoard=None):
     """
-    :type payload: пока хз, потом напишу
     :type VkSession: сессия вк устававлимая через токен
     :type VkUserId: id пользователя
     :type message: сообщение для пользователя
@@ -94,8 +95,7 @@ def send_message(VkSession, VkUserId, message=None, attachment=None, UserKeyBoar
         'message': message,
         'random_id': random.randint(-2147483648, +2147483648),
         "attachment": attachment,
-        'keyboard': UserKeyBoard,
-        'payload': payload
+        'keyboard': UserKeyBoard
     })
 
 
@@ -147,30 +147,49 @@ while True:
                 print(str(fullname) + " " + str(event.user_id))
                 print('Сообщение пришло в: ' + str(datetime.strftime(datetime.now(), "%H:%M:%S")))
                 print('Текст сообщения: ' + str(event.text))
+                print('Вложение: ' + str(event.user_id))
                 print('-' * 60)
-                print(event.attachments)
-                print('-' * 60)
-
-
-                #TODO: крч, тут до некст отметки код, который принимает вложение фотку вытягивает url и отправляет обратно url ссылку
-                if event.attachments['attach1_type']=='photo':
-                    test = InformationMessage['items'][0]['attachments'][0]['photo']['sizes']
-                    test1 = test[len(test)-1]['url']
-
-                if event.attachments['attach1_type']=='photo' and event.from_user and not event.from_me:
-                    send_message(vk_session, 83886028,
-                                 message="Фото прислал " + str(fullname) + str(event.user_id),
-                                 attachment=test1)
-                #TODO: вот до сюда. Этот код надо интегрировать в раздел "Сдать работу", так что бы эта ссылка на работу сохранялась в
-                # бд вместе с id пользователя именем и фамилией
-                # и по специальному запросу от админов высылала все url ссылки с именами и фамилиями людей
-
-
 
                 select_users = "SELECT num FROM Qiuz WHERE id = '" + str(event.user_id) + "'"
                 response = event.text.lower()
                 keyboard = create_keyboard(response)
                 photo = event.attachments
+
+                # TODO: дабавить зашиту от запрсов к NULL к массивам и славарям, для JSON InformationMessage
+                if event.attachments and (event.user_id in dictionary_contest):
+                    limit = 40
+                    URL_file = InformationMessage['items'][0]['attachments'][0]
+
+                    if event.attachments['attach1_type'] == 'photo':
+                        URL_file = InformationMessage['items'][0]['attachments'][0]['photo']['sizes']
+                        URL_file = URL_file[len(URL_file) - 1]['url']
+                        keyboard = create_keyboard('назад')
+
+                    if event.attachments['attach1_type'] == 'doc':
+                        URL_file = InformationMessage['items'][0]['attachments'][0]['doc']['url']
+                        keyboard = create_keyboard('назад')
+
+                    if event.attachments['attach1_type'] == 'link':
+                        URL_file = event.attachments['attach1_url']
+                        keyboard = create_keyboard('назад')
+
+                    test_contest = "SELECT URL FROM contest_design WHERE id = '" + str(event.user_id) + "'"
+                    quantity_photo = dbWork.execute_read_query(connection, test_contest)
+                    if len(quantity_photo) >= limit:
+                        send_message(vk_session, event.user_id,
+                                     message="Извените но на конкурс можно отправить не более " + str(
+                                         limit) + " работ.",
+                                     UserKeyBoard=keyboard)
+                    else:
+                        create_contest = "INSERT INTO contest_design (URL, id, fullname) VALUES ('" + str(
+                            URL_file) + "', '" + str(
+                            event.user_id) + "', '" + str(fullname) + "');"
+                        dbWork.execute_query(connection, create_contest)
+
+                        if event.from_user and not event.from_me:
+                            send_message(vk_session, event.user_id,
+                                         message="Спасибо, ваша работа принята",
+                                         UserKeyBoard=keyboard)
 
                 if event.from_user and not event.from_me:
                     if ((response == "1") or (response == "2") or (response == "3") or (response == "4")) and \
@@ -250,6 +269,18 @@ while True:
                                          UserKeyBoard=keyboard)
                             dictionary_contest[event.user_id] = 0
 
+                        elif response == "просмотр работ" and ((event.user_id == 83886028) or
+                                                               (event.user_id == 173079751) or
+                                                               (event.user_id == 88333266)):
+                            select_work = "SELECT URL, fullname FROM contest_design"
+                            user_work = dbWork.execute_read_query(connection, select_work)
+                            print(user_work)
+                            for number in range(len(user_work)):
+                                MessageWork = "Работа: " + str(user_work[number][0]) + "\n" \
+                                              "Выполнил: " + str(user_work[number][1]) + "\n" + "-"*35
+                                send_message(vk_session, event.user_id,
+                                             message=MessageWork)
+
                         elif response == "назад":
                             send_message(vk_session, event.user_id,
                                          message='Желаете узнать расписание, поучаствовать в розыгрыше или пройти виктарину?\n\n'
@@ -278,9 +309,10 @@ while True:
                                 else:
                                     send_message(vk_session, event.user_id,
                                                  message='Ваш результат: ' + str(res_victorina) + '\n\n'
-                                                                                                  'Впечатляющий результат, но он не идеальный')
+                                                         'Впечатляющий результат, но он не идеальный')
             except Exception as e:
                 E_message = "Ошибка:\n," + str(traceback.format_exc())
                 send_message(vk_session, 83886028,
                              message=E_message)
+                print(E_message)
                 sys.exit()
