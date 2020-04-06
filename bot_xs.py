@@ -1,5 +1,4 @@
 ﻿import sys
-
 from vk_api.longpoll import VkLongPoll, VkEventType
 import vk_api
 from datetime import datetime
@@ -7,6 +6,9 @@ import dbWork
 import traceback
 from vk_api.keyboard import VkKeyboard, VkKeyboardColor
 import random
+import generationMessage
+import threading
+import time
 
 connection = dbWork.create_connection("test1.sqlite")  # подключение к бд, или ее создание
 
@@ -30,7 +32,10 @@ dictionary_contest = {}  # Словарь для конкурса
 def create_keyboard(UserResponse):
     UserKeyboard = VkKeyboard(one_time=False)
 
-    if UserResponse == "начать":
+    if (UserResponse == "начать") or (UserResponse == 'назад'):
+        if UserResponse == 'назад':
+            dictionary_contest.pop(event.user_id, None)
+        UserKeyboard = VkKeyboard(one_time=True)
         UserKeyboard.add_button('Расписание', color=VkKeyboardColor.POSITIVE)
         UserKeyboard.add_button('Розыгрыш', color=VkKeyboardColor.POSITIVE)
         UserKeyboard.add_line()
@@ -44,7 +49,7 @@ def create_keyboard(UserResponse):
         UserKeyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
 
     elif UserResponse == 'конкурс':
-        if (event.user_id == 83886028) or (event.user_id == 173079751) or (event.user_id == 88333266):
+        if (event.user_id == 83886028) or (event.user_id == 87404117) or (event.user_id == 88333266):
             UserKeyboard.add_button('Просмотр работ', color=VkKeyboardColor.POSITIVE)
             UserKeyboard.add_line()
         UserKeyboard.add_button('Сдать работу', color=VkKeyboardColor.POSITIVE)
@@ -53,14 +58,8 @@ def create_keyboard(UserResponse):
     elif UserResponse == 'сдать работу':
         UserKeyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
 
-    elif UserResponse == 'назад':
-
-        dictionary_contest.pop(event.user_id, None)
-        UserKeyboard.add_button('Расписание', color=VkKeyboardColor.POSITIVE)
-        UserKeyboard.add_button('Розыгрыш', color=VkKeyboardColor.POSITIVE)
-        UserKeyboard.add_line()
-        UserKeyboard.add_button('Викторина', color=VkKeyboardColor.POSITIVE)
-        UserKeyboard.add_button('Конкурс', color=VkKeyboardColor.POSITIVE)
+    elif UserResponse == 'розыгрыш':
+        UserKeyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
 
     elif UserResponse == 'викторина':
         SelectUsers = "SELECT res FROM Qiuz WHERE id = '" + \
@@ -68,7 +67,7 @@ def create_keyboard(UserResponse):
         test_res = dbWork.execute_read_query(connection, SelectUsers)[0][0]
 
         if test_res == -1:
-            UserKeyboard = VkKeyboard(one_time=False)
+            UserKeyboard = VkKeyboard(one_time=False, inline=True)
             UserKeyboard.add_button('1', color=VkKeyboardColor.POSITIVE)
             UserKeyboard.add_button('2', color=VkKeyboardColor.POSITIVE)
             UserKeyboard.add_button('3', color=VkKeyboardColor.POSITIVE)
@@ -104,6 +103,7 @@ def vic_indicator(user_id):
     victorina_indicator[user_id] = 0
     dictionary_res[user_id] = 0
     text_question = victorina_mass[0][1]
+
     send_message(vk_session, event.user_id,
                  message=text_question,
                  UserKeyBoard=keyboard)
@@ -117,19 +117,32 @@ def victorina(check_dict, ResponseUser):
 
         if ResponseUser == str(victorina_mass[num_question][2]):
             dictionary_res[check_dict] += 1
+        else:
+            return dictionary_res[check_dict]
 
         if num_question == 9:
             return dictionary_res[check_dict]
 
         if num_question < 10:
             victorina_indicator[check_dict] += 1
+
         num_question = victorina_indicator[check_dict]
         text_question = str(victorina_mass[num_question][1])
-        send_message(vk_session, event.user_id, message=text_question)
+        keyboard_question = create_keyboard('викторина')
+
+        send_message(vk_session,
+                     event.user_id,
+                     message=text_question,
+                     UserKeyBoard=keyboard_question)
     except Exception:
         E_message_vic = "Ошибка:\n," + str(traceback.format_exc())
         send_message(vk_session, 83886028, message=E_message_vic)
         return res
+
+
+def timer(time_user_id):
+    time.sleep(20)
+    victorina_mass(time_user_id, "0")
 
 
 # Основная часть.
@@ -155,7 +168,15 @@ while True:
                 keyboard = create_keyboard(response)
                 photo = event.attachments
 
-                # TODO: дабавить зашиту от запрсов к NULL к массивам и славарям, для JSON InformationMessage
+                # TODO: разобратся с потками до конца
+
+                timer_thread = threading.Thread(target=timer,
+                                                name='thread_' + str(event.user_id),
+                                                args=event.user_id)
+
+                # Крч, тут можно добавиьт то чир аписано снизу, но шанс воспроизведения этой ошибки очень мал
+                # А строк кода добавится много  (15) оно того не стоит
+                # (добавить зашиту от запрсов к NULL к массивам и славарям, для JSON InformationMessage)
                 if event.attachments and (event.user_id in dictionary_contest):
                     limit = 40
                     URL_file = InformationMessage['items'][0]['attachments'][0]
@@ -196,17 +217,17 @@ while True:
                             (event.user_id in victorina_indicator):
                         # Сработает если пользователь ввел 1/2/3/4 и (проходит викторину)
 
+                        # TODO: написать остановку потока и запус нового
+
                         result = victorina(event.user_id, response)
                         # Получает результат прохождения викторины, или None если не проел ее до конца
 
                         if result is not None:  # Выполняется если польщователь прошел викторину
                             keyboard = create_keyboard("назад")
-                            send_message(vk_session, event.user_id,
-                                         message='Тест заверщен. '
-                                                 '\n\nКонечно можно было бы и лучше, но ты все равно молодец. '
-                                                 '\n\nВаш результат: ' + str(result),
-                                         UserKeyBoard=keyboard)
+                            message_result = generationMessage.messageResult(result)
+                            send_message(vk_session, event.user_id, message=message_result, UserKeyBoard=keyboard)
                             victorina_indicator.pop(event.user_id)
+
                             update_res = "UPDATE Qiuz SET res=('" + str(result) + "') WHERE id = ('" + str(
                                 event.user_id) + "');"
                             dbWork.execute_query(connection, update_res)
@@ -234,10 +255,11 @@ while True:
 
                                 message_start = "Пусть удача прибудет с тобой, и ты выиграешь " \
                                                 "\n\nВаш номер в системе бота: " + str(users) + \
-                                                "\n\nПо нему будет осуществлятся розыгрыш."
+                                                "\n\nПо нему будет осуществляться розыгрыш."
 
                                 send_message(vk_session, event.user_id,
-                                             message=message_start)
+                                             message=message_start,
+                                             UserKeyBoard=keyboard)
 
                             else:
                                 send_message(vk_session, event.user_id,
@@ -270,14 +292,15 @@ while True:
                             dictionary_contest[event.user_id] = 0
 
                         elif response == "просмотр работ" and ((event.user_id == 83886028) or
-                                                               (event.user_id == 173079751) or
+                                                               (event.user_id == 87404117) or
                                                                (event.user_id == 88333266)):
                             select_work = "SELECT URL, fullname FROM contest_design"
                             user_work = dbWork.execute_read_query(connection, select_work)
                             print(user_work)
                             for number in range(len(user_work)):
                                 MessageWork = "Работа: " + str(user_work[number][0]) + "\n" \
-                                              "Выполнил: " + str(user_work[number][1]) + "\n" + "-"*35
+                                                                                       "Выполнил: " + str(
+                                    user_work[number][1]) + "\n" + "-" * 35
                                 send_message(vk_session, event.user_id,
                                              message=MessageWork)
 
@@ -299,17 +322,23 @@ while True:
 
                             # noinspection PyUnboundLocalVariable
                             if res_victorina == -1:  # пользователь записывается в словарь, для прохождения викторины
+
+                                # TODO: добавить пото к лист потоков
+                                thread_list.append()
                                 vic_indicator(event.user_id)
 
                             else:  # вывод результата прохождения викторины
+                                keyboard_vic = create_keyboard('назад')
                                 if res_victorina > 10:
                                     send_message(vk_session, event.user_id,
                                                  message='Молодец! Вы знаете про факультет ИКСС все!\n\n'
-                                                         'Ваш результат: ' + str(res_victorina))
+                                                         'Ваш результат: ' + str(res_victorina),
+                                                 UserKeyBoard=keyboard_vic)
                                 else:
                                     send_message(vk_session, event.user_id,
-                                                 message='Ваш результат: ' + str(res_victorina) + '\n\n'
-                                                         'Впечатляющий результат, но он не идеальный')
+                                                 message='Ваш результат: ' + str(res_victorina) +
+                                                         '\n\nВпечатляющий результат, но он не идеальный',
+                                                 UserKeyBoard=keyboard_vic)
             except Exception as e:
                 E_message = "Ошибка:\n," + str(traceback.format_exc())
                 send_message(vk_session, 83886028,
