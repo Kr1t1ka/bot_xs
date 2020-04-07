@@ -1,5 +1,6 @@
 import bot_xs
-import helpFunc
+import generationMessage
+
 
 
 def answer_vic(result=None):
@@ -26,7 +27,8 @@ def answer_vic(result=None):
 def messageResult(result):
     message = "Молодец! " + str(result)
     if result == 10:
-        message = "(НАДО ПРИДУМАТЬ УНИКАЛЬНЫЕ ОТВЕТ БОТА НА ВСЕ РЕЗУЛЬТАТЫ ВИКТОРИНЫ) результат: 10"
+        message = "(НАДО ПРИДУМАТЬ УНИКАЛЬНЫЕ ОТВЕТ БОТА НА ВСЕ РЕЗУЛЬТАТЫ ВИКТОРИНЫ) результат: 10 \n" \
+                  "ЭТО ПРЕВОСХОДНЫЙ РЕЗУЛЬТАТ -- ВАШ приз Шоколадка!"
     if result == 9:
         message = "(НАДО ПРИДУМАТЬ УНИКАЛЬНЫЕ ОТВЕТ БОТА НА ВСЕ РЕЗУЛЬТАТЫ ВИКТОРИНЫ) результат: 9"
     if result == 8:

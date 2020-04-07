@@ -9,6 +9,7 @@ import random
 import generationMessage
 import threading
 import time
+import helpFunc
 
 connection = dbWork.create_connection("test1.sqlite")  # подключение к бд, или ее создание
 
@@ -27,6 +28,8 @@ victorina_mass = dbWork.execute_read_query(connection, select_victorina)
 victorina_indicator = {}  # Словарь с данными о том на каком вопросе пользователь
 dictionary_res = {}  # Словарь содержет в себе результаты ответов
 dictionary_contest = {}  # Словарь для конкурса
+thread_list = []
+t_flag = True
 
 
 def create_keyboard(UserResponse):
@@ -101,9 +104,9 @@ def send_message(VkSession, VkUserId, message=None, attachment=None, UserKeyBoar
 # Функция записывающая пользователя в словарь
 def vic_indicator(user_id):
     victorina_indicator[user_id] = 0
+    print('Создалась запись в словаре с ключом ' + str(user_id))
     dictionary_res[user_id] = 0
     text_question = victorina_mass[0][1]
-
     send_message(vk_session, event.user_id,
                  message=text_question,
                  UserKeyBoard=keyboard)
@@ -113,36 +116,54 @@ def vic_indicator(user_id):
 def victorina(check_dict, ResponseUser):
     res = 0
     try:
+        print('Викторина приняла значание ключа: ' + str(check_dict))
         num_question = victorina_indicator[check_dict]
 
         if ResponseUser == str(victorina_mass[num_question][2]):
             dictionary_res[check_dict] += 1
+        elif ResponseUser == '0':
+            helpFunc.answer_vic(result=dictionary_res[check_dict])
         else:
             return dictionary_res[check_dict]
 
         if num_question == 9:
             return dictionary_res[check_dict]
 
-        if num_question < 10:
+        if num_question < 10 and not (ResponseUser == '0'):
             victorina_indicator[check_dict] += 1
 
-        num_question = victorina_indicator[check_dict]
-        text_question = str(victorina_mass[num_question][1])
-        keyboard_question = create_keyboard('викторина')
-
-        send_message(vk_session,
-                     event.user_id,
-                     message=text_question,
-                     UserKeyBoard=keyboard_question)
+        if ResponseUser != '0':
+            num_question = victorina_indicator[check_dict]
+            text_question = str(victorina_mass[num_question][1])
+            keyboard_question = create_keyboard('викторина')
+            send_message(vk_session,
+                         event.user_id,
+                         message=text_question,
+                         UserKeyBoard=keyboard_question)
+            global t_flag
+            t_flag = True
     except Exception:
         E_message_vic = "Ошибка:\n," + str(traceback.format_exc())
         send_message(vk_session, 83886028, message=E_message_vic)
         return res
 
+# TODO разобратся с таймером, и с этими непонтно как работающими функциями helpFunc и generationMessage
+def timer(n, time_user_id):
+    time_indicator = victorina_indicator[int(time_user_id)]
+    global t_flag
+    print('Таймер для {} запущен\n'.format(time_user_id))
+    t_flag = True
+    time.sleep(n)
+    print('Время у {} закончилось\n'.format(time_user_id))
+    print(t_flag)
+    print(time_indicator + 1)
+    print(victorina_indicator[int(time_user_id)])
+    tmp = (time_indicator == victorina_indicator[int(time_user_id)])
+    print(t_flag)
 
-def timer(time_user_id):
-    time.sleep(20)
-    victorina_mass(time_user_id, "0")
+    if t_flag and ((time_indicator + 1) == victorina_indicator[int(time_user_id)]):
+        victorina(int(time_user_id), "0")
+
 
 
 # Основная часть.
@@ -168,17 +189,15 @@ while True:
                 keyboard = create_keyboard(response)
                 photo = event.attachments
 
-                # TODO: разобратся с потками до конца
-
                 timer_thread = threading.Thread(target=timer,
                                                 name='thread_' + str(event.user_id),
-                                                args=event.user_id)
+                                                args=(5, str(event.user_id)))
 
                 # Крч, тут можно добавиьт то чир аписано снизу, но шанс воспроизведения этой ошибки очень мал
                 # А строк кода добавится много  (15) оно того не стоит
                 # (добавить зашиту от запрсов к NULL к массивам и славарям, для JSON InformationMessage)
                 if event.attachments and (event.user_id in dictionary_contest):
-                    limit = 40
+                    limit = 5
                     URL_file = InformationMessage['items'][0]['attachments'][0]
 
                     if event.attachments['attach1_type'] == 'photo':
@@ -217,7 +236,14 @@ while True:
                             (event.user_id in victorina_indicator):
                         # Сработает если пользователь ввел 1/2/3/4 и (проходит викторину)
 
-                        # TODO: написать остановку потока и запус нового
+                        t_flag = False
+
+                        thread_list.append(timer_thread)
+                        timer_thread.start()
+
+                        helpFunc.answer_vic(result=None)
+
+                        '''# TODO: написать остановку потока и запус нового
 
                         result = victorina(event.user_id, response)
                         # Получает результат прохождения викторины, или None если не проел ее до конца
@@ -227,10 +253,11 @@ while True:
                             message_result = generationMessage.messageResult(result)
                             send_message(vk_session, event.user_id, message=message_result, UserKeyBoard=keyboard)
                             victorina_indicator.pop(event.user_id)
+                            print('Удалена запись в словаре с ключом ' + str(event.user_id))
 
                             update_res = "UPDATE Qiuz SET res=('" + str(result) + "') WHERE id = ('" + str(
                                 event.user_id) + "');"
-                            dbWork.execute_query(connection, update_res)
+                            #dbWork.execute_query(connection, update_res)'''
 
                     elif not (event.user_id in victorina_indicator) and not (event.user_id in dictionary_contest):
                         # выполняется если пользователь не проходит викторину и бот не ждет от него работы на конкурс
@@ -323,9 +350,10 @@ while True:
                             # noinspection PyUnboundLocalVariable
                             if res_victorina == -1:  # пользователь записывается в словарь, для прохождения викторины
 
-                                # TODO: добавить пото к лист потоков
-                                thread_list.append()
                                 vic_indicator(event.user_id)
+                                thread_list.append(timer_thread)
+                                timer_thread.start()
+                                print("поток запущен")
 
                             else:  # вывод результата прохождения викторины
                                 keyboard_vic = create_keyboard('назад')
