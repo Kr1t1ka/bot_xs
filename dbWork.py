@@ -5,6 +5,7 @@ from sqlite3 import Error
 Файл с функциями для работы с бд
 '''
 
+
 # Функция подключающияся к бд. Или создает ее если ее нет.
 def create_connection(path):
     try:

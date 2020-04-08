@@ -21,5 +21,19 @@
         </library>
       </libraries>
     </data-source>
+    <data-source source="LOCAL" name="Chinook_Sqlite" uuid="555f4896-1886-4c1a-97b6-1064e0472101">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:\Users\КОМУНИСТ\Desktop\bot_vk\bot_xs\Chinook_Sqlite.sqlite</jdbc-url>
+      <libraries>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.25.1/license.txt</url>
+        </library>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.25.1/sqlite-jdbc-3.25.1.jar</url>
+        </library>
+      </libraries>
+    </data-source>
   </component>
 </project>
