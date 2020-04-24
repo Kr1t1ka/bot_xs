@@ -7,7 +7,7 @@
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:identifier.sqlite</jdbc-url>
     </data-source>
-    <data-source source="LOCAL" name="test1" uuid="d297161c-132d-467e-8062-c75924eeb69a">
+    <data-source source="LOCAL" name="bot_db" uuid="d297161c-132d-467e-8062-c75924eeb69a">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
@@ -21,11 +21,25 @@
         </library>
       </libraries>
     </data-source>
-    <data-source source="LOCAL" name="Chinook_Sqlite" uuid="555f4896-1886-4c1a-97b6-1064e0472101">
+    <data-source source="LOCAL" name="sql_event" uuid="555f4896-1886-4c1a-97b6-1064e0472101">
       <driver-ref>sqlite.xerial</driver-ref>
       <synchronize>true</synchronize>
       <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
       <jdbc-url>jdbc:sqlite:C:\Users\КОМУНИСТ\Desktop\bot_vk\bot_xs\Chinook_Sqlite.sqlite</jdbc-url>
+      <libraries>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.25.1/license.txt</url>
+        </library>
+        <library>
+          <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.25.1/sqlite-jdbc-3.25.1.jar</url>
+        </library>
+      </libraries>
+    </data-source>
+    <data-source source="LOCAL" name="event_sql" uuid="4ae9a67a-87f1-4d9c-8325-ce313aa8a9eb">
+      <driver-ref>sqlite.xerial</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.sqlite.JDBC</jdbc-driver>
+      <jdbc-url>jdbc:sqlite:C:\Users\КОМУНИСТ\Desktop\bot_vk\bot_xs\event_sql.db</jdbc-url>
       <libraries>
         <library>
           <url>file://$APPLICATION_CONFIG_DIR$/jdbc-drivers/Xerial SQLiteJDBC/3.25.1/license.txt</url>
