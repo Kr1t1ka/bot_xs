@@ -9,6 +9,9 @@ import random
 import generationMessage
 import time
 
+# TODO: доваить все текста в бота, и все ответы на загалки
+#  добавить проверку на прохождение викторины и разобратся с базой данных SQL-квеста
+
 try:
     connection = dbWork.create_connection("test1.sqlite")  # подключение к бд, или ее создание
     connection_sql = dbWork.create_connection("event_sql.db")
@@ -30,6 +33,7 @@ try:
     dictionary_contest = {}  # Словарь для конкурса
     dictionary_timer = {}  # Словарь хранящий время ответов на вопросы
     dictionary_sql = {}  # Словарь для sql запросов
+    dictionary_quest = {}  # словарь с квестами
 
 
     def create_keyboard(UserResponse):
@@ -54,12 +58,6 @@ try:
 
         elif UserResponse == 'квесты':
             UserKeyboard.add_button('SQL', color=VkKeyboardColor.POSITIVE)
-            UserKeyboard.add_line()
-            UserKeyboard.add_button('Еще часть квеста', color=VkKeyboardColor.POSITIVE)
-            UserKeyboard.add_line()
-            UserKeyboard.add_button('Еще часть квеста', color=VkKeyboardColor.POSITIVE)
-            UserKeyboard.add_line()
-            UserKeyboard.add_button('Еще часть квеста', color=VkKeyboardColor.POSITIVE)
             UserKeyboard.add_line()
             UserKeyboard.add_button('Назад', color=VkKeyboardColor.NEGATIVE)
 
@@ -367,8 +365,9 @@ try:
 
                             elif response == "квесты":
                                 send_message(vk_session, event.user_id,
-                                             message='На нашем факультете есть различные кафедры, и чтобы познакомить тебя поближе с тем, чем они занимаются, мы подготовили квест!\n'
-                                                     'Собирай qr-коды, разгадывай шифры и выигрывай призы!',
+                                             message='Добро пожаловать во вкладку квесты. '
+                                                     'Здесь мы познакомим тебя с нашими кафедрами и тем, чем они занимаются. '
+                                                     'Что бы начать, тебе надо ответить, к чему ведет код?🐶',
                                              UserKeyBoard=keyboard)
 
                             elif response == "sql":
