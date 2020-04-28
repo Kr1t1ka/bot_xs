@@ -1,5 +1,4 @@
-﻿import sys
-from vk_api.longpoll import VkLongPoll, VkEventType
+﻿from vk_api.longpoll import VkLongPoll, VkEventType
 import vk_api
 from datetime import datetime
 import dbWork
@@ -9,8 +8,8 @@ import random
 import generationMessage
 import time
 
-# TODO: доваить все текста в бота, и все ответы на загалки
-#  добавить проверку на прохождение викторины и разобратся с базой данных SQL-квеста
+# TODO: добавить возможность из викторины рандомные вопросы отправлять пользователю
+#  доработать немного косметически
 
 try:
     connection = dbWork.create_connection("test1.sqlite")  # подключение к бд, или ее создание
@@ -34,6 +33,7 @@ try:
     dictionary_timer = {}  # Словарь хранящий время ответов на вопросы
     dictionary_sql = {}  # Словарь для sql запросов
     dictionary_quest = {}  # словарь с квестами
+    dictionary_quest_indicator = {}  # словарь с квестами
 
 
     def create_keyboard(UserResponse):
@@ -43,6 +43,7 @@ try:
             if UserResponse == 'назад':
                 dictionary_contest.pop(event.user_id, None)
                 dictionary_sql.pop(event.user_id, None)
+                dictionary_quest_indicator.pop(event.user_id, None)
             UserKeyboard = VkKeyboard(one_time=True)
             UserKeyboard.add_button('Расписание', color=VkKeyboardColor.POSITIVE)
             UserKeyboard.add_button('Розыгрыш', color=VkKeyboardColor.POSITIVE)
@@ -179,13 +180,19 @@ try:
                     user = vk_session.method("users.get", {"user_ids": event.user_id})
                     InformationMessage = vk_session.method("messages.getById", {"message_ids": event.message_id})
                     fullname = user[0]['first_name'] + ' ' + user[0]['last_name']
+                    select_quest = "SELECT step FROM quest WHERE id = '" + str(event.user_id) + "'"
 
                     # вывод данных в консоль, для мониторнка работы бота
                     print(str(fullname) + " " + str(event.user_id))
                     print('Сообщение пришло в: ' + str(datetime.strftime(datetime.now(), "%H:%M:%S")))
                     print('Текст сообщения: ' + str(event.text))
                     print('Вложение: ' + str(event.user_id))
-
+                    try:
+                        dictionary_quest[event.user_id] = dbWork.execute_read_query(connection, select_quest)[0][0]
+                        print("Пользователь проходит квест. Сейчас на шаге: " + str(dictionary_quest[event.user_id]))
+                    except:
+                        print("Пользователь не проходит квест.")
+                        dictionary_quest[event.user_id] = -1
                     print('-' * 60)
 
                     select_users = "SELECT res FROM quiz WHERE id = '" + str(event.user_id) + "'"
@@ -196,6 +203,7 @@ try:
                     # Крч, тут можно добавиьт то чир аписано снизу, но шанс воспроизведения этой ошибки очень мал
                     # А строк кода добавится много  (15) оно того не стоит
                     # (добавить зашиту от запрсов к NULL к массивам и славарям, для JSON InformationMessage)
+
                     if event.attachments and (event.user_id in dictionary_contest):
                         limit = 40
                         URL_file = InformationMessage['items'][0]['attachments'][0]
@@ -244,6 +252,10 @@ try:
                                     result) + "А этот QR-код тебе пригодится."
                                 keyboard = create_keyboard("назад")
                                 attachment = "photo-192914903_457239030"
+                                create_acc_quest = "INSERT INTO quest (id, step) VALUES ('" + str(
+                                    event.user_id) + "','1');"
+                                dbWork.execute_query(connection, create_acc_quest)  # запись пользователей в квест
+
                                 send_message(vk_session, event.user_id,
                                              message=message_result,
                                              UserAttachment=attachment,
@@ -267,10 +279,45 @@ try:
                             except:
                                 send_message(vk_session, event.user_id,
                                              message="Ой, ошибочка.\n"
-                                                     "Запрос вмещает в себя слишком много данных, попробуйте сузить параметры поиска.")
+                                                     "Запрос вмещает в себя слишком много данных, "
+                                                     "попробуйте сузить параметры поиска.")
+
+                        # обработка квеста
+                        elif (dictionary_quest[event.user_id] > 0) and (event.user_id in dictionary_quest_indicator):
+                            if dictionary_quest[event.user_id] == 1:
+                                if (response.find("хатико") > -1) or (response.find("собака") > -1) \
+                                        or (response.find("акита-ину") > -1) or (response.find("сиба-ину") > -1) \
+                                        or (response.find("сиба ину") > -1) or (response.find("акита ину") > -1):
+                                    message_quest_1 = "Поздравляем,ты прошел первый этап нашего квеста! " \
+                                                      "Это было давольно просто не так ли? Но это не конец! " \
+                                                      "Теперь предлагаю познакомиться с кафедрой филс и ответить на вопрос: " \
+                                                      "\n" \
+                                                      "Какая устойчивость была у регенераторов JBT145-SX?"
+                                    send_message(vk_session, event.user_id, message=message_quest_1, UserAttachment="video-192914903_456239017")
+                                    update_quest = "UPDATE quest SET step=('2') WHERE id = ('" + str(
+                                        event.user_id) + "');"
+                                    dbWork.execute_query(connection, update_quest)
+                            if dictionary_quest[event.user_id] == 2:
+                                if (response.find("10 15") > -1) or (response.find("10-15") > -1):
+                                    message_quest_2 = "Ты зашёл так далеко! Но здесь ты не пройдешь. " \
+                                                      "Попробуй пройти сквозь защиту кафедры ЗСС." \
+                                                      "(ссылка на шифр)"
+                                    send_message(vk_session, event.user_id, message=message_quest_2)
+                                    update_quest = "UPDATE quest SET step=('3') WHERE id = ('" + str(
+                                        event.user_id) + "');"
+                                    dbWork.execute_query(connection, update_quest)
+                            if dictionary_quest[event.user_id] == 3:
+                                if response == "пароль":
+                                    send_message(vk_session, event.user_id, message="Поздравляю, ты прошел квест и стал ближе к нашему факультету! "
+                                                                                    "Теперь тебя ждёт небольшой бонус, ведь не каждый смог дойти до конца!")
+                                    update_quest = "UPDATE quest SET step=('4') WHERE id = ('" + str(
+                                        event.user_id) + "');"
+                                    dbWork.execute_query(connection, update_quest)
 
                         elif not (event.user_id in victorina_indicator) and not (
-                                event.user_id in dictionary_contest) and not (event.user_id in dictionary_sql):
+                                event.user_id in dictionary_contest) and not (event.user_id in dictionary_sql) \
+                                and not (event.user_id in dictionary_quest_indicator):
+
                             # выполняется если пользователь не проходит викторину и бот не ждет от него работы на конкурс
 
                             if response == "начать":
@@ -364,6 +411,7 @@ try:
                                                      'Желаем удачи!', UserKeyBoard=keyboard)
 
                             elif response == "квесты":
+                                dictionary_quest_indicator[event.user_id] = 1
                                 send_message(vk_session, event.user_id,
                                              message='Добро пожаловать во вкладку квесты. '
                                                      'Здесь мы познакомим тебя с нашими кафедрами и тем, чем они занимаются. '
@@ -428,4 +476,5 @@ try:
                     print(E_message)
                     # sys.exit()
 except:
-    pass
+    E_message = "Ошибка:\n," + str(traceback.format_exc())
+    print(E_message)
