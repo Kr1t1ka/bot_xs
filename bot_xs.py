@@ -19,6 +19,7 @@ dictionary_quest_indicator = {}  # словарь с квестами
 
 # TODO: добавить возможность из викторины рандомные вопросы отправлять пользователю
 #  доработать немного косметически
+#  добавить разные сообщения для пользователя, по мере прохождения квеста
 while True:
     try:
         connection = dbWork.create_connection("test1.sqlite")  # подключение к бд, или ее создание
@@ -88,7 +89,13 @@ while True:
             elif UserResponse == 'приступить':
                 SelectUsers = "SELECT res FROM quiz WHERE id = '" + \
                               str(event.user_id) + "'"  # Выберает номер пользователя по уникальному id
-                test_res = dbWork.execute_read_query(connection, SelectUsers)[0][0]
+                try:
+                    test_res = dbWork.execute_read_query(connection, SelectUsers)[0][0]
+                except:
+                    send_message(vk_session, event.user_id,
+                                 message="Ой, ошибочка.\n"
+                                         "Запрос вмещает в себя слишком много данных, "
+                                         "попробуйте сузить параметры поиска.")
 
                 if test_res == -1:
                     UserKeyboard = VkKeyboard(one_time=False, inline=True)
@@ -471,7 +478,10 @@ while True:
                                                                  '\n\nВпечатляющий результат, но он не идеальный',
                                                          UserKeyBoard=keyboard_vic)
                     except Exception as e:
-                        E_message = "Ошибка:\n," + str(traceback.format_exc())
+                        E_message = "Ошибка:\n," + str(traceback.format_exc()) + "\n" \
+                                    "Пользователь:" + str(fullname) + " " + str(event.user_id) + '\n' \
+                                    'Сообщение пришло в: ' + str(datetime.strftime(datetime.now(), "%H:%M:%S")) + "\n" \
+                                    'Вложение: ' + str(event.user_id) + "\n"
                         send_message(vk_session, 83886028,
                                      message=E_message)
                         print(E_message)
