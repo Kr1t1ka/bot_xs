@@ -18,7 +18,7 @@ dictionary_quest = {}  # словарь с квестами
 dictionary_quest_indicator = {}  # словарь с квестами
 
 # TODO: добавить возможность из викторины рандомные вопросы отправлять пользователю
-#  доработать немного косметически
+#  доработать немного косметическиЫ
 while True:
     try:
         connection = dbWork.create_connection("test1.sqlite")  # подключение к бд, или ее создание
@@ -451,15 +451,15 @@ while True:
                                         print(res_victorina)
                                     else:
                                         send_message(vk_session, event.user_id,
-                                                                message='Ваш результат: ' + str(res_victorina) +
+                                                     message='Ваш результат: ' + str(res_victorina) +
                                                              '\n\nВпечатляющий результат, но он не идеальный',
                                                      UserKeyBoard=keyboard_vic)
-                except Exception as e:
-                    E_message = "Ошибка:\n," + str(traceback.format_exc())
-                    send_message(vk_session, 83886028,
-                                 message=E_message)
-                    print(E_message)
-                    # sys.exit()
-except:
-    E_message = "Ошибка:\n," + str(traceback.format_exc())
-    print(E_message)
+                    except Exception as e:
+                        E_message = "Ошибка:\n," + str(traceback.format_exc())
+                        send_message(vk_session, 83886028,
+                                     message=E_message)
+                        print(E_message)
+                        # sys.exit()
+    except:
+        E_message = "Ошибка:\n," + str(traceback.format_exc())
+        print(E_message)
