@@ -313,7 +313,7 @@ while True:
                                     message_result = generationMessage.messageResult(
                                         result) + "А этот QR-код тебе пригодится."
                                     keyboard = create_keyboard("расписание")
-                                    attachment = "photo-192914903_457239030"
+                                    attachment = "photo-192914903_457239052"
                                     create_acc_quest = "INSERT INTO quest (id, step) VALUES ('" + str(
                                         event.user_id) + "','1');"
 
