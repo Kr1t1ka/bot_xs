@@ -320,14 +320,14 @@ while True:
                                     victorina_indicator.pop(event.user_id)
                                     update_res = "UPDATE quiz SET res=('" + str(result) + "') WHERE id = ('" + str(
                                         event.user_id) + "');"
-                                    # dbWork.execute_query(connection, update_res)
+                                    dbWork.execute_query(connection, update_res)
                             elif (((response.find('select') == 0) or (response.find('from') == 0) or (
                                     response.find('where') == 0)) and (event.user_id in dictionary_sql)):
 
-                                '''if event.user_id == 838860281:
+                                if event.user_id == 838860281:
                                     message_sql = dbWork.execute_read_query(connection, response)
-                                else:'''
-                                message_sql = dbWork.execute_read_query(connection_sql, response)
+                                else:
+                                    message_sql = dbWork.execute_read_query(connection_sql, response)
 
                                 try:
                                     send_message(vk_session, event.user_id,
