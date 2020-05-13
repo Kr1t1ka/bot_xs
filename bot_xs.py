@@ -8,7 +8,7 @@ import random
 import generationMessage
 import time
 
-print("Версия: 0.60")
+print("Версия: 0.61")
 
 # Обьявление всех словарей на случай если пропадет соединение и бот будет переподключатся
 victorina_indicator = {}  # Словарь с данными о том на каком вопросе пользователь
@@ -90,10 +90,10 @@ while True:
                         pass
 
                 UserKeyboard = VkKeyboard(one_time=True)
-                UserKeyboard.add_button('Расписание', color=VkKeyboardColor.PRIMARY)
-                UserKeyboard.add_button('Розыгрыш', color=VkKeyboardColor.PRIMARY)
-                UserKeyboard.add_line()
-                UserKeyboard.add_button('Викторина', color=VkKeyboardColor.PRIMARY)
+                #UserKeyboard.add_button('Расписание', color=VkKeyboardColor.PRIMARY)
+                #UserKeyboard.add_button('Розыгрыш', color=VkKeyboardColor.PRIMARY)
+                #UserKeyboard.add_line()
+                #UserKeyboard.add_button('Викторина', color=VkKeyboardColor.PRIMARY)
                 UserKeyboard.add_button('Конкурс', color=VkKeyboardColor.PRIMARY)
                 if test_res > -1:
                     UserKeyboard.add_button('Квест', color=VkKeyboardColor.POSITIVE)
@@ -309,6 +309,7 @@ while True:
                                 dbWork.execute_query(connection, create_contest)
 
                                 if event.from_user and not event.from_me:
+                                    keyboard = create_keyboard("расписание")
                                     send_message(vk_session, event.user_id,
                                                  message="Спасибо, ваша работа принята",
                                                  UserKeyBoard=keyboard)
@@ -437,12 +438,10 @@ while True:
                                                          '!\nЯ бот, созданный ко дню рождения факультета ИКСС, который будет помогать тебе!'
                                                          '\n\nНаше мероприятие пройдёт в формате лекций и интерактивов.'
                                                          '\nПодробнее с ними ты можешь ознакомиться, нажав на соответствующие кнопки.'
-                                                         '\nТак же участвуй в нашей викторине! (она будет доступна только 22 мая)'
+                                                         '\nТак же участвуй в нашей викторине!'
                                                          '\nА ещё, мы приготовили для тебя розыгрыш. Для участия в нем тебе надо пройти викторину'
                                                          '(неважно, сколько баллов ты там наберёшь).'
-                                                         '\n\nМы будем рады, если ты проведёшь этот день с нами! Удачи!'
-                                                         '\n\n ДЛЯ ТЕСТИРОВЩИКОВ: все идеи, предложения,'
-                                                         ' или сообщения о багах и ошибках писать @id83886028 (сюда).',
+                                                         '\n\nМы будем рады, если ты проведёшь этот день с нами! Удачи!',
                                                  UserKeyBoard=keyboard)
 
                                 elif response == "розыгрыш":
@@ -477,9 +476,7 @@ while True:
 
                                 elif response == "конкурс":
                                     send_message(vk_session, event.user_id,
-                                                 message='Сюда ты можешь загрузить свою работу на конкурс дизайна!\n'
-                                                         '(подробности смотри в официальной группе факультета ИКСС в вк)'
-                                                         '\n\nДЛЯ ТЕХ КТО ТЕСТИРУЕТ: загрузите любую картинку(можно даже не одну) в любом формате который поддерживает вк.',
+                                                 message='(Условие конкурса)',
                                                  UserKeyBoard=keyboard)
 
                                 elif response == "сдать работу":
@@ -529,9 +526,7 @@ while True:
                                                          '\nПодробнее с ними ты можешь ознакомиться, нажав на соответствующие кнопки.'
                                                          '\nТак же участвуй в нашей викторине! (она будет доступна только 22 мая)'
                                                          '\nА ещё, мы приготовили для тебя розыгрыш. Для участия в нем тебе надо пройти викторину '
-                                                         '(неважно, сколько баллов ты там наберёшь).'
-                                                         '\n\n ДЛЯ ТЕСТИРОВЩИКОВ: все идеи, предложения,'
-                                                         ' или сообщения о багах и ошибках писать @id83886028 (сюда).',
+                                                         '(неважно, сколько баллов ты там наберёшь).',
                                                  UserKeyBoard=keyboard)
 
                                 elif response == "приступить":
