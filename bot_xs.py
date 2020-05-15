@@ -8,7 +8,7 @@ import random
 import generationMessage
 import time
 
-print("Версия: 0.61")
+print("Версия: 1.00")
 
 # Обьявление всех словарей на случай если пропадет соединение и бот будет переподключатся
 victorina_indicator = {}  # Словарь с данными о том на каком вопросе пользователь
@@ -95,8 +95,8 @@ while True:
                 #UserKeyboard.add_line()
                 #UserKeyboard.add_button('Викторина', color=VkKeyboardColor.PRIMARY)
                 UserKeyboard.add_button('Конкурс', color=VkKeyboardColor.PRIMARY)
-                if test_res > -1:
-                    UserKeyboard.add_button('Квест', color=VkKeyboardColor.POSITIVE)
+                #if test_res > -1:
+                    #UserKeyboard.add_button('Квест', color=VkKeyboardColor.POSITIVE)
 
             elif UserResponse == 'викторина':
                 UserKeyboard = VkKeyboard(one_time=True)
@@ -279,7 +279,7 @@ while True:
                         # (добавить зашиту от запрсов к NULL к массивам и славарям, для JSON InformationMessage)
 
                         if event.attachments and (event.user_id in dictionary_contest):
-                            limit = 40
+                            limit = 3
                             URL_file = InformationMessage['items'][0]['attachments'][0]
 
                             if event.attachments['attach1_type'] == 'photo':
@@ -434,14 +434,8 @@ while True:
                                     # TODO: исправить все текста
 
                                     send_message(vk_session, event.user_id,
-                                                 message='Доброго времени суток, ' + user[0]['first_name'] +
-                                                         '!\nЯ бот, созданный ко дню рождения факультета ИКСС, который будет помогать тебе!'
-                                                         '\n\nНаше мероприятие пройдёт в формате лекций и интерактивов.'
-                                                         '\nПодробнее с ними ты можешь ознакомиться, нажав на соответствующие кнопки.'
-                                                         '\nТак же участвуй в нашей викторине!'
-                                                         '\nА ещё, мы приготовили для тебя розыгрыш. Для участия в нем тебе надо пройти викторину'
-                                                         '(неважно, сколько баллов ты там наберёшь).'
-                                                         '\n\nМы будем рады, если ты проведёшь этот день с нами! Удачи!',
+                                                 message='Доброго времени суток, ' + user[0]['first_name'],
+                                                 UserAttachment="photo-192914903_457239068",
                                                  UserKeyBoard=keyboard)
 
                                 elif response == "розыгрыш":
@@ -476,7 +470,11 @@ while True:
 
                                 elif response == "конкурс":
                                     send_message(vk_session, event.user_id,
-                                                 message='(Условие конкурса)',
+                                                 UserAttachment="photo-192914903_457239069",
+                                                 UserKeyBoard=keyboard)
+                                    send_message(vk_session, event.user_id,
+                                                 message="Вот исходники логотипа, вдруг тебе пригодятся.",
+                                                 UserAttachment="doc-192914903_552527766",
                                                  UserKeyBoard=keyboard)
 
                                 elif response == "сдать работу":
@@ -522,11 +520,7 @@ while True:
 
                                 elif response == "главное меню":
                                     send_message(vk_session, event.user_id,
-                                                 message='Наше мероприятие проходит в формате лекций и интерактивов.'
-                                                         '\nПодробнее с ними ты можешь ознакомиться, нажав на соответствующие кнопки.'
-                                                         '\nТак же участвуй в нашей викторине! (она будет доступна только 22 мая)'
-                                                         '\nА ещё, мы приготовили для тебя розыгрыш. Для участия в нем тебе надо пройти викторину '
-                                                         '(неважно, сколько баллов ты там наберёшь).',
+                                                 UserAttachment="photo-192914903_457239068",
                                                  UserKeyBoard=keyboard)
 
                                 elif response == "приступить":
